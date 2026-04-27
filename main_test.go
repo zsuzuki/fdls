@@ -22,9 +22,32 @@ func TestListFilesDepthAndRelativePaths(t *testing.T) {
 	}
 
 	got := strings.Split(strings.TrimSpace(out.String()), "\n")
-	want := []string{"a/child.txt", "root.txt"}
+	want := []string{filepath.Join("a", "child.txt"), "root.txt"}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("unexpected output\nwant:\n%s\ngot:\n%s", strings.Join(want, "\n"), strings.Join(got, "\n"))
+	}
+}
+
+func TestListFilesAllowsSpacesInRootAndFileNames(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "Program Files")
+	path := filepath.Join(dir, "app data.txt")
+	writeFile(t, path, "hello")
+
+	var out bytes.Buffer
+	args := append([]string{"-size"}, strings.Split(dir, " ")...)
+	if err := run(args, &out); err != nil {
+		t.Fatal(err)
+	}
+
+	fields := strings.Split(strings.TrimSpace(out.String()), "\t")
+	if len(fields) != 2 {
+		t.Fatalf("expected tab-delimited 2 columns, got %d: %q", len(fields), out.String())
+	}
+	if fields[0] != "app data.txt" {
+		t.Fatalf("expected filename with spaces, got %q", fields[0])
+	}
+	if fields[1] != "5" {
+		t.Fatalf("expected size 5, got %q", fields[1])
 	}
 }
 

@@ -27,3 +27,11 @@ Options:
 ```sh
 fdls -path abs -size -date -sha256 -depth 2 .
 ```
+
+スペースを含むパスやファイル名もそのまま扱います。Windowsでは引用符で囲むのが確実です。
+
+```powershell
+fdls -size "C:\Program Files"
+```
+
+未引用で `fdls C:\Program Files` のように渡された場合も、残りの位置引数をスペースで結合して1つのディレクトリとして扱います。

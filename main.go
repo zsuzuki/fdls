@@ -51,11 +51,11 @@ func run(args []string, out io.Writer) error {
 	if err := fs.Parse(args); err != nil {
 		return usageError(err)
 	}
-	if fs.NArg() != 1 {
+	if fs.NArg() == 0 {
 		return usageError(errors.New("directory must be specified"))
 	}
 
-	opts.root = fs.Arg(0)
+	opts.root = strings.Join(fs.Args(), " ")
 	return listFiles(opts, out)
 }
 
