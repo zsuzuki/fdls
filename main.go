@@ -17,6 +17,7 @@ import (
 type options struct {
 	root     string
 	pathMode string
+	match    string
 	showHash bool
 	showDate bool
 	showSize bool
@@ -43,6 +44,7 @@ func run(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("fdls", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&opts.pathMode, "path", "rel", "path output mode: rel or abs")
+	fs.StringVar(&opts.match, "match", "", "show only files whose relative path contains this string")
 	fs.BoolVar(&opts.showHash, "sha256", false, "show SHA256 hash")
 	fs.BoolVar(&opts.showDate, "date", false, "show modified date")
 	fs.BoolVar(&opts.showSize, "size", false, "show file size in bytes")
@@ -60,7 +62,7 @@ func run(args []string, out io.Writer) error {
 }
 
 func usageError(err error) error {
-	return fmt.Errorf("%w\nusage: fdls [options] <directory>\n\noptions:\n  -path rel|abs\n  -sha256\n  -date\n  -size\n  -depth N (-1=infinite, 0=no recursion)", err)
+	return fmt.Errorf("%w\nusage: fdls [options] <directory>\n\noptions:\n  -path rel|abs\n  -match string\n  -sha256\n  -date\n  -size\n  -depth N (-1=infinite, 0=no recursion)", err)
 }
 
 func listFiles(opts options, out io.Writer) error {
@@ -107,6 +109,9 @@ func listFiles(opts options, out io.Writer) error {
 		if opts.maxDepth >= 0 && depth > opts.maxDepth {
 			return nil
 		}
+		if !matchesFile(opts, rootAbs, path) {
+			return nil
+		}
 
 		e, err := buildEntry(opts, rootAbs, path, d)
 		if err != nil {
@@ -146,6 +151,19 @@ func depthFromRoot(rootAbs, path string) (int, error) {
 		return 0, err
 	}
 	return len(strings.Split(rel, string(os.PathSeparator))) - 1, nil
+}
+
+func matchesFile(opts options, rootAbs, path string) bool {
+	if opts.match == "" {
+		return true
+	}
+
+	rel, err := filepath.Rel(rootAbs, path)
+	if err != nil {
+		return false
+	}
+
+	return strings.Contains(rel, opts.match)
 }
 
 func buildEntry(opts options, rootAbs, path string, d fs.DirEntry) (entry, error) {

@@ -17,6 +17,7 @@ fdls [options] <directory>
 Options:
 
 - `-path rel|abs`: パス表示形式。既定値は `rel`
+- `-match string`: ルートからの相対パスに指定文字列を含むファイルだけを表示
 - `-sha256`: SHA256ハッシュ値を表示
 - `-date`: 更新日時を表示
 - `-size`: サイズをバイト単位で表示
@@ -26,6 +27,10 @@ Options:
 
 ```sh
 fdls -path abs -size -date -sha256 -depth 2 .
+```
+
+```sh
+fdls -match ".go" .
 ```
 
 スペースを含むパスやファイル名もそのまま扱います。Windowsでは引用符で囲むのが確実です。

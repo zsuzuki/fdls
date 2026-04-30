@@ -78,6 +78,27 @@ func TestListFilesAbsolutePathSizeDateAndSHA256(t *testing.T) {
 	}
 }
 
+func TestListFilesMatchFiltersByRelativePath(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "notes.txt"), "notes")
+	writeFile(t, filepath.Join(dir, "logs", "app.log"), "log")
+	writeFile(t, filepath.Join(dir, "logs", "readme.txt"), "readme")
+
+	var out bytes.Buffer
+	if err := run([]string{"-match", "log", dir}, &out); err != nil {
+		t.Fatal(err)
+	}
+
+	got := strings.Split(strings.TrimSpace(out.String()), "\n")
+	want := []string{
+		filepath.Join("logs", "app.log"),
+		filepath.Join("logs", "readme.txt"),
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("unexpected output\nwant:\n%s\ngot:\n%s", strings.Join(want, "\n"), strings.Join(got, "\n"))
+	}
+}
+
 func TestInvalidPathMode(t *testing.T) {
 	var out bytes.Buffer
 	err := run([]string{"-path", "full", "."}, &out)
