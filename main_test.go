@@ -99,6 +99,44 @@ func TestListFilesMatchFiltersByRelativePath(t *testing.T) {
 	}
 }
 
+func TestListFilesExcludeDirByName(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "main.go"), "main")
+	writeFile(t, filepath.Join(dir, "vendor", "dep.go"), "dep")
+	writeFile(t, filepath.Join(dir, "src", "vendor", "nested.go"), "nested")
+
+	var out bytes.Buffer
+	if err := run([]string{"-exclude-dir", "vendor", "-match", ".go", dir}, &out); err != nil {
+		t.Fatal(err)
+	}
+
+	got := strings.TrimSpace(out.String())
+	if got != "main.go" {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}
+
+func TestListFilesExcludeDirByRelativePath(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "cache", "keep.txt"), "keep")
+	writeFile(t, filepath.Join(dir, "build", "cache", "skip.txt"), "skip")
+	writeFile(t, filepath.Join(dir, "build", "out.txt"), "out")
+
+	var out bytes.Buffer
+	if err := run([]string{"-exclude-dir", "build/cache", dir}, &out); err != nil {
+		t.Fatal(err)
+	}
+
+	got := strings.Split(strings.TrimSpace(out.String()), "\n")
+	want := []string{
+		filepath.Join("build", "out.txt"),
+		filepath.Join("cache", "keep.txt"),
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("unexpected output\nwant:\n%s\ngot:\n%s", strings.Join(want, "\n"), strings.Join(got, "\n"))
+	}
+}
+
 func TestInvalidPathMode(t *testing.T) {
 	var out bytes.Buffer
 	err := run([]string{"-path", "full", "."}, &out)

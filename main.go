@@ -15,13 +15,14 @@ import (
 )
 
 type options struct {
-	root     string
-	pathMode string
-	match    string
-	showHash bool
-	showDate bool
-	showSize bool
-	maxDepth int
+	root        string
+	pathMode    string
+	match       string
+	excludeDirs stringList
+	showHash    bool
+	showDate    bool
+	showSize    bool
+	maxDepth    int
 }
 
 type entry struct {
@@ -45,6 +46,7 @@ func run(args []string, out io.Writer) error {
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&opts.pathMode, "path", "rel", "path output mode: rel or abs")
 	fs.StringVar(&opts.match, "match", "", "show only files whose relative path contains this string")
+	fs.Var(&opts.excludeDirs, "exclude-dir", "exclude a directory by name or relative path; can be used multiple times")
 	fs.BoolVar(&opts.showHash, "sha256", false, "show SHA256 hash")
 	fs.BoolVar(&opts.showDate, "date", false, "show modified date")
 	fs.BoolVar(&opts.showSize, "size", false, "show file size in bytes")
@@ -62,7 +64,7 @@ func run(args []string, out io.Writer) error {
 }
 
 func usageError(err error) error {
-	return fmt.Errorf("%w\nusage: fdls [options] <directory>\n\noptions:\n  -path rel|abs\n  -match string\n  -sha256\n  -date\n  -size\n  -depth N (-1=infinite, 0=no recursion)", err)
+	return fmt.Errorf("%w\nusage: fdls [options] <directory>\n\noptions:\n  -path rel|abs\n  -match string\n  -exclude-dir name-or-path\n  -sha256\n  -date\n  -size\n  -depth N (-1=infinite, 0=no recursion)", err)
 }
 
 func listFiles(opts options, out io.Writer) error {
@@ -94,6 +96,10 @@ func listFiles(opts options, out io.Writer) error {
 
 		if path == rootAbs {
 			return nil
+		}
+
+		if d.IsDir() && isExcludedDir(opts, rootAbs, path) {
+			return filepath.SkipDir
 		}
 
 		depth, err := depthFromRoot(rootAbs, path)
@@ -153,6 +159,34 @@ func depthFromRoot(rootAbs, path string) (int, error) {
 	return len(strings.Split(rel, string(os.PathSeparator))) - 1, nil
 }
 
+func isExcludedDir(opts options, rootAbs, path string) bool {
+	if len(opts.excludeDirs) == 0 {
+		return false
+	}
+
+	rel, err := filepath.Rel(rootAbs, path)
+	if err != nil {
+		return false
+	}
+
+	base := filepath.Base(path)
+	relSlash := filepath.ToSlash(filepath.Clean(rel))
+	for _, excluded := range opts.excludeDirs {
+		excluded = filepath.ToSlash(filepath.Clean(excluded))
+		if strings.Contains(excluded, "/") {
+			if relSlash == excluded {
+				return true
+			}
+			continue
+		}
+		if base == excluded {
+			return true
+		}
+	}
+
+	return false
+}
+
 func matchesFile(opts options, rootAbs, path string) bool {
 	if opts.match == "" {
 		return true
@@ -210,4 +244,18 @@ func sha256File(path string) (string, error) {
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+type stringList []string
+
+func (s *stringList) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *stringList) Set(value string) error {
+	if value == "" {
+		return errors.New("value must not be empty")
+	}
+	*s = append(*s, value)
+	return nil
 }
