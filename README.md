@@ -47,3 +47,7 @@ fdls -size "C:\Program Files"
 ```
 
 未引用で `fdls C:\Program Files` のように渡された場合も、残りの位置引数をスペースで結合して1つのディレクトリとして扱います。
+
+## License
+
+MIT
